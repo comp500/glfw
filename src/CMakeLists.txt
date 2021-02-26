@@ -44,6 +44,10 @@ if (_GLFW_X11 OR _GLFW_WAYLAND)
     endif()
 endif()
 
+if ("$ENV{LWJGL_ARCH}" MATCHES "x64")
+	target_sources(glfw PRIVATE wrap_memcpy.c)
+endif()
+
 if (_GLFW_WAYLAND)
     find_program(WAYLAND_SCANNER_EXECUTABLE NAMES wayland-scanner)
     pkg_check_modules(WAYLAND_PROTOCOLS REQUIRED wayland-protocols>=1.15)
