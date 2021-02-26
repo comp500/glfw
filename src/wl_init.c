@@ -1049,7 +1049,7 @@ GLFWbool _glfwConnectWayland(int platformID, _GLFWplatform* platform)
         _glfwGetKeyScancodeWayland,
         _glfwSetClipboardStringWayland,
         _glfwGetClipboardStringWayland,
-#if defined(__linux__)
+#if defined(GLFW_BUILD_LINUX_JOYSTICK)
         _glfwInitJoysticksLinux,
         _glfwTerminateJoysticksLinux,
         _glfwPollJoystickLinux,
