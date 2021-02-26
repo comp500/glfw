@@ -1,0 +1,211 @@
+name: LWJGL Build
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  AWS_DEFAULT_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  S3_PARAMS: --acl public-read --cache-control "public,must-revalidate,proxy-revalidate,max-age=0"
+  GLFW_PARAMS: -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF -DCMAKE_BUILD_TYPE=Release
+
+jobs:
+  linux:
+    name: Linux
+    runs-on: ${{matrix.runner}}
+    strategy:
+      #fail-fast: false
+      matrix:
+        #BUILD: [x64, x64-wayland, arm32, arm32-wayland, arm64, arm64-wayland, mips64]
+        BUILD: [x64, x64-wayland, arm32, arm32-wayland, arm64, arm64-wayland]
+        include:
+          # -----
+          - BUILD: x64
+            ARCH: x64
+            runner: ubuntu-16.04
+            PACKAGES: gcc-4.8 libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
+            CC: CC=gcc-4.8
+            CMAKE_PARAMS: -DCMAKE_SHARED_LINKER_FLAGS=-Wl,--wrap,memcpy
+            STRIP: strip
+            LIBNAME: libglfw.so
+          # -----
+          - BUILD: x64-wayland
+            ARCH: x64
+            runner: ubuntu-20.04
+            PACKAGES: wayland-protocols libwayland-dev libxkbcommon-dev libegl1-mesa-dev
+            #GCC: gcc-4.8
+            CC: CC=gcc
+            CMAKE_PARAMS: -DGLFW_USE_WAYLAND=ON -DCMAKE_SHARED_LINKER_FLAGS=-Wl,--wrap,memcpy
+            STRIP: strip
+            LIBNAME: libglfw_wayland.so
+          # -----
+          - BUILD: arm32
+            ARCH: arm32
+            runner: ubuntu-16.04
+            CROSS_ARCH: armhf
+            PACKAGES: gcc-4.8-arm-linux-gnueabihf libc6-dev-armhf-cross libxrandr-dev:armhf libxinerama-dev:armhf libxcursor-dev:armhf libxi-dev:armhf libxext-dev:armhf
+            CC: PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:${CMAKE_SYSROOT}/usr/lib/arm-linux-gnueabihf/pkgconfig CC=arm-linux-gnueabihf-gcc-4.8
+            CMAKE_PARAMS:
+            STRIP: arm-linux-gnueabihf-strip
+            LIBNAME: libglfw.so
+          # -----
+          - BUILD: arm32-wayland
+            ARCH: arm32
+            runner: ubuntu-20.04
+            CROSS_ARCH: armhf
+            PACKAGES: gcc-arm-linux-gnueabihf libc6-dev-armhf-cross wayland-protocols:armhf libwayland-dev:armhf libxkbcommon-dev:armhf libegl1-mesa-dev:armhf
+            #GCC: gcc-4.8-arm-linux-gnueabihf
+            CC: PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:${CMAKE_SYSROOT}/usr/lib/arm-linux-gnueabihf/pkgconfig CC=arm-linux-gnueabihf-gcc
+            CMAKE_PARAMS: -DGLFW_USE_WAYLAND=ON
+            STRIP: arm-linux-gnueabihf-strip
+            LIBNAME: libglfw_wayland.so
+          # -----
+          - BUILD: arm64
+            ARCH: arm64
+            runner: ubuntu-16.04
+            CROSS_ARCH: arm64
+            PACKAGES: gcc-4.8-aarch64-linux-gnu libc6-dev-arm64-cross libxrandr-dev:arm64 libxinerama-dev:arm64 libxcursor-dev:arm64 libxi-dev:arm64 libxext-dev:arm64
+            CC: PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:${CMAKE_SYSROOT}/usr/lib/aarch64-linux-gnu/pkgconfig CC=aarch64-linux-gnu-gcc-4.8
+            CMAKE_PARAMS:
+            STRIP: aarch64-linux-gnu-strip
+            LIBNAME: libglfw.so
+          # -----
+          - BUILD: arm64-wayland
+            ARCH: arm64
+            runner: ubuntu-20.04
+            CROSS_ARCH: arm64
+            PACKAGES: gcc-aarch64-linux-gnu libc6-dev-arm64-cross wayland-protocols:arm64 libwayland-dev:arm64 libxkbcommon-dev:arm64 libegl1-mesa-dev:arm64
+            #GCC: gcc-4.8-aarch64-linux-gnu
+            CC: PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:${CMAKE_SYSROOT}/usr/lib/aarch64-linux-gnu/pkgconfig CC=aarch64-linux-gnu-gcc
+            CMAKE_PARAMS: -DGLFW_USE_WAYLAND=ON
+            STRIP: aarch64-linux-gnu-strip
+            LIBNAME: libglfw_wayland.so
+          # -----
+#          - BUILD: mips64
+#            ARCH: mips64
+#            runner: ubuntu-16.04
+#            CROSS_ARCH: mips64el
+#            PACKAGES: libxrandr-dev:mips64el libxinerama-dev:mips64el libxcursor-dev:mips64el libxi-dev:mips64el libxext-dev:mips64el
+#            CC: CC=mips64el-linux-gnuabi64-gcc-5
+#            CMAKE_PARAMS:
+#            STRIP: mips64el-linux-gnuabi64-strip
+#            LIBNAME: libglfw.so
+    env:
+      LWJGL_ARCH: ${{matrix.ARCH}}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 3
+      - run: |
+          if [[ "${{matrix.ARCH}}" != "mips64" ]]
+          then
+            sudo sed -i 's/deb http/deb [arch=amd64,i386] http/' /etc/apt/sources.list
+            sudo grep "ubuntu.com/ubuntu" /etc/apt/sources.list | sudo tee /etc/apt/sources.list.d/ports.list
+            sudo sed -i 's/amd64,i386/armhf,arm64/' /etc/apt/sources.list.d/ports.list
+            sudo sed -i 's#http://.*/ubuntu#http://ports.ubuntu.com/ubuntu-ports#' /etc/apt/sources.list.d/ports.list
+          else
+            sudo apt-get -yq install gcc-5-mips64el-linux-gnuabi64 libc6-dev-mips64el-cross
+            sudo rm -rf /etc/apt/sources.list
+            sudo sh -c "echo 'deb http://deb.debian.org/debian buster main' >> /etc/apt/sources.list"
+          fi
+          sudo dpkg --add-architecture ${{matrix.CROSS_ARCH}}
+          sudo apt-get update || true
+        if: contains(matrix.ARCH, 'x64') != true
+        name: Prepare cross-compilation
+      - run: sudo apt-get -yq --allow-unauthenticated --no-install-suggests --no-install-recommends install ${{matrix.PACKAGES}} -o Dpkg::Options::="--force-overwrite"
+        name: Install dependencies
+#      - run: |
+#          sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu/ xenial main"
+#          sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu/ xenial universe"
+#          sudo apt update
+#          sudo apt install ${{matrix.GCC}}
+#        if: contains(matrix.BUILD, '-wayland')
+#        name: Install old GCC
+      - run: |
+          mkdir build
+          cd build
+          ${{matrix.CC}} cmake $GLFW_PARAMS -DCMAKE_C_FLAGS="-std=c99 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0" ${{matrix.CMAKE_PARAMS}} ..
+        name: Configure build
+      - run: |
+          cd build
+          cmake --build .
+          ${{matrix.STRIP}} src/libglfw.so
+        name: Build
+      - run: aws s3 cp build/src/libglfw.so s3://build.lwjgl.org/nightly/linux/${{matrix.ARCH}}/${{matrix.LIBNAME}} $S3_PARAMS
+        name: Upload artifact
+      - run: |
+          git log --first-parent --pretty=format:%H HEAD~2..HEAD~1 > ${{matrix.LIBNAME}}.git
+          aws s3 cp ${{matrix.LIBNAME}}.git s3://build.lwjgl.org/nightly/linux/${{matrix.ARCH}}/ $S3_PARAMS
+        name: Upload git revision
+
+  macos:
+    name: macOS
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        ARCH: [x64, arm64]
+        include:
+          - ARCH: x64
+            CMAKE_PARAMS: -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9
+          - ARCH: arm64
+            CMAKE_PARAMS: -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_OSX_ARCHITECTURES=arm64
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 3
+      - run: |
+          mkdir build
+          cd build
+          cmake $GLFW_PARAMS ${{matrix.CMAKE_PARAMS}} ..
+        name: Configure build
+      - run: |
+          cd build
+          cmake --build .
+          strip -u -r src/libglfw.dylib
+        name: Build
+      - run: aws s3 cp build/src/libglfw.dylib s3://build.lwjgl.org/nightly/macosx/${{matrix.ARCH}}/ $S3_PARAMS
+        name: Upload artifact
+      - run: |
+          git log --first-parent --pretty=format:%H HEAD~2..HEAD~1 > libglfw.dylib.git
+          aws s3 cp libglfw.dylib.git s3://build.lwjgl.org/nightly/macosx/${{matrix.ARCH}}/ $S3_PARAMS
+        name: Upload git revision
+
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        ARCH: [x86, x64, arm64]
+        include:
+          - ARCH: x86
+            PLATFORM: Win32
+          - ARCH: x64
+            PLATFORM: x64
+          - ARCH: arm64
+            PLATFORM: ARM64
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 3
+      - run: |
+          mkdir build
+          cd build
+          cmake -G "Visual Studio 16 2019" -A ${{matrix.PLATFORM}} ${{env.GLFW_PARAMS}} -DUSE_MSVC_RUNTIME_LIBRARY_DLL=OFF ..
+        shell: cmd
+        name: Configure build
+      - run: |
+          cd build
+          cmake --build . --config Release
+        shell: cmd
+        name: Build
+      - run: aws s3 cp build\src\Release\glfw3.dll s3://build.lwjgl.org/nightly/windows/${{matrix.ARCH}}/glfw.dll ${{env.S3_PARAMS}}
+        shell: cmd
+        name: Upload artifact
+      - run: |
+          git log --first-parent --pretty=format:%%H HEAD~2..HEAD~1 > revision.git
+          aws s3 cp revision.git s3://build.lwjgl.org/nightly/windows/${{matrix.ARCH}}/glfw.dll.git ${{env.S3_PARAMS}}
+        shell: cmd
+        name: Upload git revision

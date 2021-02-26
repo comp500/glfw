@@ -72,6 +72,10 @@ if (_GLFW_X11 OR _GLFW_WAYLAND)
     endif()
 endif()
 
+if ("$ENV{LWJGL_ARCH}" MATCHES "x64")
+    target_sources(glfw PRIVATE wrap_memcpy.c)
+endif()
+
 if (APPLE)
     # For some reason, CMake doesn't know about .m
     set_source_files_properties(${glfw_SOURCES} PROPERTIES LANGUAGE C)
