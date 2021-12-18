@@ -43,7 +43,8 @@ static DWORD getWindowStyle(const _GLFWwindow* window)
     DWORD style = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
 
     if (window->monitor)
-        style |= WS_POPUP;
+        //style |= WS_POPUP;
+    	;
     else
     {
         style |= WS_SYSMENU | WS_MINIMIZEBOX;
@@ -66,9 +67,9 @@ static DWORD getWindowStyle(const _GLFWwindow* window)
 //
 static DWORD getWindowExStyle(const _GLFWwindow* window)
 {
-    DWORD style = WS_EX_APPWINDOW;
+    DWORD style = 0;//WS_EX_APPWINDOW;
 
-    if (window->monitor || window->floating)
+    if (window->floating)
         style |= WS_EX_TOPMOST;
 
     return style;
@@ -521,7 +522,7 @@ static void fitToMonitor(_GLFWwindow* window)
 {
     MONITORINFO mi = { sizeof(mi) };
     GetMonitorInfo(window->monitor->win32.handle, &mi);
-    SetWindowPos(window->win32.handle, HWND_TOPMOST,
+    SetWindowPos(window->win32.handle, HWND_TOP,
                  mi.rcMonitor.left,
                  mi.rcMonitor.top,
                  mi.rcMonitor.right - mi.rcMonitor.left,
@@ -680,8 +681,8 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
             if (window->cursorMode == GLFW_CURSOR_DISABLED)
                 enableCursor(window);
 
-            if (window->monitor && window->autoIconify)
-                _glfwPlatformIconifyWindow(window);
+//            if (window->monitor && window->autoIconify)
+//                _glfwPlatformIconifyWindow(window);
 
             _glfwInputWindowFocus(window, GLFW_FALSE);
             return 0;
@@ -968,7 +969,7 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
 
         case WM_SIZE:
         {
-            const GLFWbool iconified = wParam == SIZE_MINIMIZED;
+            const GLFWbool iconified = GLFW_FALSE;
             const GLFWbool maximized = wParam == SIZE_MAXIMIZED ||
                                        (window->win32.maximized &&
                                         wParam != SIZE_RESTORED);
@@ -1756,7 +1757,7 @@ void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
         acquireMonitor(window);
 
         GetMonitorInfo(window->monitor->win32.handle, &mi);
-        SetWindowPos(window->win32.handle, HWND_TOPMOST,
+        SetWindowPos(window->win32.handle, HWND_TOP,
                      mi.rcMonitor.left,
                      mi.rcMonitor.top,
                      mi.rcMonitor.right - mi.rcMonitor.left,
@@ -2319,7 +2320,7 @@ GLFWAPI GLFWwindow* glfwAttachWin32Window(HWND handle, GLFWwindow* share)
             window->floating = GLFW_TRUE;
 
         window->win32.maximized = IsZoomed(window->win32.handle);
-        window->win32.iconified = IsIconic(window->win32.handle);
+        window->win32.iconified = GLFW_FALSE;//IsIconic(window->win32.handle);
     }
 
     if (ctxconfig.client != GLFW_NO_API)

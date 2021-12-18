@@ -612,7 +612,7 @@ void _glfwPlatformTerminate(void)
 
 const char* _glfwPlatformGetVersionString(void)
 {
-    return _GLFW_VERSION_NUMBER " Win32 WGL EGL OSMesa"
+    return _GLFW_VERSION_NUMBER " Win32 WGL EGL OSMesa BorderlessMining"
 #if defined(__MINGW32__)
         " MinGW"
 #elif defined(_MSC_VER)
