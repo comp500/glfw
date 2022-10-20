@@ -380,10 +380,13 @@ void _glfwPlatformGetMonitorWorkarea(_GLFWmonitor* monitor,
 
 GLFWvidmode* _glfwPlatformGetVideoModes(_GLFWmonitor* monitor, int* count)
 {
-    int modeIndex = 0, size = 0;
+    int modeIndex = 0, size = 1;
     GLFWvidmode* result = NULL;
 
-    *count = 0;
+	*count = 1;
+	// HACK: Always return the current video mode
+	result = calloc(1, sizeof(GLFWvidmode));
+	_glfwPlatformGetVideoMode(monitor, result);
 
     for (;;)
     {
@@ -442,14 +445,6 @@ GLFWvidmode* _glfwPlatformGetVideoModes(_GLFWmonitor* monitor, int* count)
 
         (*count)++;
         result[*count - 1] = mode;
-    }
-
-    if (!*count)
-    {
-        // HACK: Report the current mode if no valid modes were found
-        result = calloc(1, sizeof(GLFWvidmode));
-        _glfwPlatformGetVideoMode(monitor, result);
-        *count = 1;
     }
 
     return result;
