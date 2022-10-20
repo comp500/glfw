@@ -148,7 +148,7 @@ GLFWAPI const char* glfwGetVersionString(void)
 {
     return _GLFW_VERSION_NUMBER
 #if defined(_GLFW_WIN32)
-        " Win32 WGL"
+        " Win32 WGL BorderlessMining"
 #endif
 #if defined(_GLFW_COCOA)
         " Cocoa NSGL"

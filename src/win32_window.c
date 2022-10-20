@@ -42,7 +42,8 @@ static DWORD getWindowStyle(const _GLFWwindow* window)
     DWORD style = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
 
     if (window->monitor)
-        style |= WS_POPUP;
+        //style |= WS_POPUP;
+    	;
     else
     {
         style |= WS_SYSMENU | WS_MINIMIZEBOX;
@@ -65,9 +66,9 @@ static DWORD getWindowStyle(const _GLFWwindow* window)
 //
 static DWORD getWindowExStyle(const _GLFWwindow* window)
 {
-    DWORD style = WS_EX_APPWINDOW;
+    DWORD style = 0;//WS_EX_APPWINDOW;
 
-    if (window->monitor || window->floating)
+    if (window->floating)
         style |= WS_EX_TOPMOST;
 
     return style;
@@ -435,7 +436,7 @@ static void fitToMonitor(_GLFWwindow* window)
 {
     MONITORINFO mi = { sizeof(mi) };
     GetMonitorInfo(window->monitor->win32.handle, &mi);
-    SetWindowPos(window->win32.handle, HWND_TOPMOST,
+    SetWindowPos(window->win32.handle, HWND_TOP,
                  mi.rcMonitor.left,
                  mi.rcMonitor.top,
                  mi.rcMonitor.right - mi.rcMonitor.left,
@@ -594,8 +595,8 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
             if (window->cursorMode == GLFW_CURSOR_DISABLED)
                 enableCursor(window);
 
-            if (window->monitor && window->autoIconify)
-                _glfwIconifyWindowWin32(window);
+//          if (window->monitor && window->autoIconify)
+//              _glfwIconifyWindowWin32(window);
 
             _glfwInputWindowFocus(window, GLFW_FALSE);
             return 0;
@@ -972,7 +973,7 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
         {
             const int width = LOWORD(lParam);
             const int height = HIWORD(lParam);
-            const GLFWbool iconified = wParam == SIZE_MINIMIZED;
+            const GLFWbool iconified = GLFW_FALSE;
             const GLFWbool maximized = wParam == SIZE_MAXIMIZED ||
                                        (window->win32.maximized &&
                                         wParam != SIZE_RESTORED);
@@ -1756,7 +1757,7 @@ void _glfwSetWindowMonitorWin32(_GLFWwindow* window,
         acquireMonitor(window);
 
         GetMonitorInfo(window->monitor->win32.handle, &mi);
-        SetWindowPos(window->win32.handle, HWND_TOPMOST,
+        SetWindowPos(window->win32.handle, HWND_TOP,
                      mi.rcMonitor.left,
                      mi.rcMonitor.top,
                      mi.rcMonitor.right - mi.rcMonitor.left,
